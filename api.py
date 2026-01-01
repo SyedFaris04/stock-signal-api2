@@ -301,12 +301,12 @@ def last_lookback_window(ticker: str):
 # =========================================================
 def predict_ensemble(window):
     """Run all 6 models and combine predictions"""
-    # Tabular models
+    # Tabular models - convert to float explicitly
     X_tab = scaler.transform(window[FEATURES])
-    proba_rf = rf_model.predict_proba(X_tab[-1:])[:, 1][0]
-    proba_logreg = logreg_model.predict_proba(X_tab[-1:])[:, 1][0]
-    proba_xgb = xgb_model.predict_proba(X_tab[-1:])[:, 1][0]
-    proba_lgb = lgb_model.predict_proba(X_tab[-1:])[:, 1][0]
+    proba_rf = float(rf_model.predict_proba(X_tab[-1:])[:, 1][0])
+    proba_logreg = float(logreg_model.predict_proba(X_tab[-1:])[:, 1][0])
+    proba_xgb = float(xgb_model.predict_proba(X_tab[-1:])[:, 1][0])
+    proba_lgb = float(lgb_model.predict_proba(X_tab[-1:])[:, 1][0])
     
     # Sequential models (LSTM + Transformer)
     X_seq = window[FEATURES].values.astype(np.float32)[np.newaxis, ...]
@@ -316,9 +316,9 @@ def predict_ensemble(window):
     proba_lstm = float(lstm_model.predict(X_seq_scaled, verbose=0).ravel()[0])
     proba_transformer = float(transformer_model.predict(X_seq_scaled, verbose=0).ravel()[0])
     
-    # Weighted ensemble
+    # Weighted ensemble - ensure float type
     w = ensemble_weights
-    proba_ens = (
+    proba_ens = float(
         w['lstm_weight'] * proba_lstm +
         w['transformer_weight'] * proba_transformer +
         w['rf_weight'] * proba_rf +
