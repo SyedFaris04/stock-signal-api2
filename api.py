@@ -7,9 +7,69 @@ import pandas as pd
 import yfinance as yf
 import joblib
 import tensorflow as tf
+from tensorflow.keras import layers, backend as K
 from datetime import datetime, timedelta
 import warnings
 warnings.filterwarnings('ignore')
+
+# =========================================================
+# CUSTOM LAYERS (MUST BE DEFINED BEFORE LOADING MODELS)
+# =========================================================
+@tf.keras.saving.register_keras_serializable(package="CustomLayers")
+class AttentionLayer(layers.Layer):
+    """Custom attention mechanism for LSTM model"""
+    def __init__(self, **kwargs):
+        super(AttentionLayer, self).__init__(**kwargs)
+    
+    def build(self, input_shape):
+        self.W = self.add_weight(
+            name='attention_weight',
+            shape=(input_shape[-1], 1),
+            initializer='glorot_uniform',
+            trainable=True
+        )
+        self.b = self.add_weight(
+            name='attention_bias',
+            shape=(input_shape[1], 1),
+            initializer='zeros',
+            trainable=True
+        )
+        super(AttentionLayer, self).build(input_shape)
+    
+    def call(self, x):
+        e = K.tanh(K.dot(x, self.W) + self.b)
+        a = K.softmax(e, axis=1)
+        output = x * a
+        return K.sum(output, axis=1)
+    
+    def get_config(self):
+        return super().get_config()
+
+@tf.keras.saving.register_keras_serializable(package="CustomLayers")
+class PositionalEncoding(layers.Layer):
+    """Positional encoding for Transformer model"""
+    def __init__(self, d_model, max_len=5000, **kwargs):
+        super(PositionalEncoding, self).__init__(**kwargs)
+        self.d_model = d_model
+        self.max_len = max_len
+        
+        position = np.arange(max_len)[:, np.newaxis]
+        div_term = np.exp(np.arange(0, d_model, 2) * -(np.log(10000.0) / d_model))
+        
+        pe = np.zeros((max_len, d_model))
+        pe[:, 0::2] = np.sin(position * div_term)
+        pe[:, 1::2] = np.cos(position * div_term)
+        
+        self.pos_encoding = tf.constant(pe[np.newaxis, :, :], dtype=tf.float32)
+    
+    def call(self, inputs):
+        seq_len = tf.shape(inputs)[1]
+        return inputs + self.pos_encoding[:, :seq_len, :]
+    
+    def get_config(self):
+        config = super().get_config()
+        config.update({"d_model": self.d_model, "max_len": self.max_len})
+        return config
 
 # =========================================================
 # LOAD ALL 6 MODELS + METADATA
@@ -22,8 +82,22 @@ rf_model = joblib.load("rf_model.pkl")
 logreg_model = joblib.load("logreg_model.pkl")
 xgb_model = joblib.load("xgb_model.pkl")
 lgb_model = joblib.load("lgb_model.pkl")
-lstm_model = tf.keras.models.load_model("lstm_attention_model.keras")
-transformer_model = tf.keras.models.load_model("transformer_model.keras")
+
+# Load models with custom objects
+custom_objects = {
+    'AttentionLayer': AttentionLayer,
+    'PositionalEncoding': PositionalEncoding
+}
+
+lstm_model = tf.keras.models.load_model(
+    "lstm_attention_model.keras",
+    custom_objects=custom_objects
+)
+transformer_model = tf.keras.models.load_model(
+    "transformer_model.keras",
+    custom_objects=custom_objects
+)
+
 FEATURES = joblib.load("features.pkl")
 ensemble_weights = joblib.load("ensemble_weights.pkl")
 metadata = joblib.load("model_metadata.pkl")
