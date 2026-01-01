@@ -13,9 +13,8 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # =========================================================
-# CUSTOM LAYERS (MUST BE DEFINED BEFORE LOADING MODELS)
+# CUSTOM LAYERS (DEFINED BEFORE LOADING MODELS)
 # =========================================================
-@tf.keras.saving.register_keras_serializable(package="CustomLayers")
 class AttentionLayer(layers.Layer):
     """Custom attention mechanism for LSTM model"""
     def __init__(self, **kwargs):
@@ -43,9 +42,9 @@ class AttentionLayer(layers.Layer):
         return K.sum(output, axis=1)
     
     def get_config(self):
-        return super().get_config()
+        config = super().get_config()
+        return config
 
-@tf.keras.saving.register_keras_serializable(package="CustomLayers")
 class PositionalEncoding(layers.Layer):
     """Positional encoding for Transformer model"""
     def __init__(self, d_model, max_len=5000, **kwargs):
@@ -83,7 +82,7 @@ logreg_model = joblib.load("logreg_model.pkl")
 xgb_model = joblib.load("xgb_model.pkl")
 lgb_model = joblib.load("lgb_model.pkl")
 
-# Load models with custom objects
+# ✅ FIXED: Load models with custom_objects (no decorator needed)
 custom_objects = {
     'AttentionLayer': AttentionLayer,
     'PositionalEncoding': PositionalEncoding
@@ -345,13 +344,13 @@ def build_explanation(row: pd.Series, probas: dict) -> str:
     # Model consensus
     ensemble_proba = probas['ensemble']
     if ensemble_proba > 0.65:
-        msgs.append(f"🎯 Strong BUY signal ({ensemble_proba:.1%} confidence) with high model consensus.")
+        msgs.append(f"🎯 Strong BUY signal ({ensemble_proba:.1%} confidence)")
     elif ensemble_proba > 0.5:
-        msgs.append(f"⚠️ Moderate BUY signal ({ensemble_proba:.1%} confidence) - models show some disagreement.")
+        msgs.append(f"⚠️ Moderate BUY signal ({ensemble_proba:.1%} confidence)")
     elif ensemble_proba > 0.35:
-        msgs.append(f"📊 Neutral signal ({ensemble_proba:.1%}) - mixed indicators, HOLD recommended.")
+        msgs.append(f"📊 Neutral ({ensemble_proba:.1%}) - HOLD recommended")
     else:
-        msgs.append(f"🛑 SKIP signal ({ensemble_proba:.1%} confidence) - bearish outlook.")
+        msgs.append(f"🛑 SKIP signal ({ensemble_proba:.1%} confidence)")
     
     # RSI
     rsi = float(row.get("rsi", np.nan))
@@ -366,11 +365,10 @@ def build_explanation(row: pd.Series, probas: dict) -> str:
     # MA trend
     ma10 = float(row.get("ma_10", np.nan))
     ma20 = float(row.get("ma_20", np.nan))
-    price = float(row.get("price", np.nan))
     if ma10 > ma20:
-        msgs.append("📈 Bullish trend (MA10 > MA20)")
+        msgs.append("📈 Bullish trend")
     else:
-        msgs.append("📉 Bearish trend (MA10 < MA20)")
+        msgs.append("📉 Bearish trend")
     
     return " | ".join(msgs)
 
