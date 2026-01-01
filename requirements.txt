@@ -7,3 +7,6 @@ yfinance
 scikit-learn
 tensorflow
 joblib
+xgboost
+lightgbm
+scipy
