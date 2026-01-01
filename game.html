@@ -1,0 +1,2571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Stock Trading Academy - Complete Learning Platform</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    
+    <style>
+        :root {
+            --bg: #020617;
+            --bg-panel: rgba(15, 23, 42, 0.85);
+            --bg-input: rgba(15, 23, 42, 0.85);
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --border: rgba(148, 163, 184, 0.25);
+            --accent-blue: #3b82f6;
+            --accent-cyan: #06b6d4;
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
+            --accent-gold: #f59e0b;
+            --accent-purple: #a855f7;
+            --shadow-glow: 0 0 40px rgba(59, 130, 246, 0.3);
+            --shadow-strong: 0 20px 60px rgba(15, 23, 42, 0.9);
+        }
+
+        [data-theme="light"] {
+            --bg: #f8fafc;
+            --bg-panel: rgba(255, 255, 255, 0.95);
+            --bg-input: rgba(249, 250, 251, 0.98);
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border: rgba(203, 213, 225, 0.8);
+            --shadow-glow: 0 0 30px rgba(59, 130, 246, 0.15);
+            --shadow-strong: 0 15px 40px rgba(100, 116, 139, 0.2);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes pulseGlow {
+            0%, 100% { box-shadow: 0 0 20px rgba(16, 185, 129, 0.4); }
+            50% { box-shadow: 0 0 40px rgba(16, 185, 129, 0.7); }
+        }
+
+        @keyframes celebrate {
+            0%, 100% { transform: scale(1); }
+            25% { transform: scale(1.1) rotate(-5deg); }
+            75% { transform: scale(1.1) rotate(5deg); }
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            color: var(--text-main);
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0a0e27 0%, #020617 50%, #0c1838 100%);
+            background-size: 200% 200%;
+            animation: gradientShift 15s ease infinite;
+            overflow-x: hidden;
+            position: relative;
+            transition: background 0.4s ease, color 0.4s ease;
+        }
+
+        [data-theme="light"] body {
+            background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 50%, #cbd5e1 100%);
+        }
+
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            background: var(--bg-panel);
+            border-radius: 16px;
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            margin-bottom: 20px;
+            animation: slideIn 0.5s ease;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .logo {
+            font-size: 28px;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .level-badge {
+            padding: 8px 16px;
+            background: linear-gradient(135deg, var(--accent-gold), #d97706);
+            border-radius: 999px;
+            font-size: 14px;
+            font-weight: 700;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .header-controls {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-secondary {
+            background: var(--bg-input);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border);
+        }
+
+        /* Main Layout - 3 Column */
+        .main-layout {
+            display: grid;
+            grid-template-columns: 320px 1fr 380px;
+            gap: 20px;
+            animation: slideIn 0.6s ease;
+        }
+
+        /* Left Sidebar */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .panel {
+            background: var(--bg-panel);
+            border-radius: 16px;
+            padding: 24px;
+            border: 1px solid var(--border);
+            backdrop-filter: blur(20px);
+        }
+
+        .panel-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .panel-icon {
+            font-size: 24px;
+        }
+
+        /* Learning Path */
+        .learning-path {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .lesson-item {
+            padding: 16px;
+            background: var(--bg-input);
+            border-radius: 12px;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .lesson-item:hover {
+            border-color: var(--accent-blue);
+            transform: translateX(4px);
+        }
+
+        .lesson-item.active {
+            border-color: var(--accent-green);
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(6, 182, 212, 0.1));
+        }
+
+        .lesson-item.completed {
+            border-color: var(--accent-gold);
+        }
+
+        .lesson-item.locked {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .lesson-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .lesson-number {
+            font-size: 12px;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .lesson-status {
+            font-size: 18px;
+        }
+
+        .lesson-title {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .lesson-desc {
+            font-size: 12px;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
+        .lesson-progress {
+            margin-top: 8px;
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .lesson-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-green), var(--accent-cyan));
+            transition: width 0.5s ease;
+        }
+
+        /* XP Progress Bar */
+        .xp-container {
+            margin-top: 16px;
+            padding: 16px;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(168, 85, 247, 0.1));
+            border-radius: 12px;
+            border: 1px solid var(--accent-purple);
+        }
+
+        .xp-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .xp-bar {
+            height: 12px;
+            background: rgba(148, 163, 184, 0.2);
+            border-radius: 999px;
+            overflow: hidden;
+        }
+
+        .xp-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-purple), var(--accent-blue));
+            transition: width 0.5s ease;
+            box-shadow: 0 0 10px var(--accent-purple);
+        }
+
+        /* Achievements */
+        .achievements-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .achievement-badge {
+            padding: 16px;
+            background: var(--bg-input);
+            border-radius: 12px;
+            text-align: center;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .achievement-badge:hover {
+            transform: scale(1.05);
+        }
+
+        .achievement-badge.unlocked {
+            border-color: var(--accent-gold);
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(239, 68, 68, 0.1));
+            animation: pulseGlow 2s infinite;
+        }
+
+        .achievement-icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+            filter: grayscale(100%);
+        }
+
+        .achievement-badge.unlocked .achievement-icon {
+            filter: grayscale(0);
+            animation: float 3s ease-in-out infinite;
+        }
+
+        .achievement-name {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .achievement-badge.unlocked .achievement-name {
+            color: var(--accent-gold);
+        }
+
+        /* Leaderboard Styles */
+        .leaderboard-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .leaderboard-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--bg-input);
+            padding: 12px;
+            border-radius: 10px;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .leaderboard-item:hover {
+            border-color: var(--accent-blue);
+            transform: translateX(4px);
+        }
+
+        .leaderboard-item.current-user {
+            border-color: var(--accent-cyan);
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(6, 182, 212, 0.1));
+        }
+
+        .lb-rank {
+            font-size: 20px;
+            font-weight: 800;
+            min-width: 30px;
+            text-align: center;
+        }
+
+        .lb-rank.first { color: var(--accent-gold); }
+        .lb-rank.second { color: #c0c0c0; }
+        .lb-rank.third { color: #cd7f32; }
+
+        .lb-info {
+            flex: 1;
+        }
+
+        .lb-name {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .lb-stats {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .lb-coins {
+            font-size: 18px;
+            font-weight: 800;
+            color: var(--accent-gold);
+        }
+
+        .edit-name-btn {
+            padding: 4px 8px;
+            font-size: 10px;
+            background: var(--accent-blue);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        /* Coin Balance Display */
+        .coin-balance {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(234, 179, 8, 0.2));
+            border: 2px solid var(--accent-gold);
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 16px;
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--accent-gold);
+        }
+
+        .coin-icon {
+            font-size: 24px;
+        }
+
+        /* Powerup Shop */
+        .powerup-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+        }
+
+        .powerup-item {
+            background: var(--bg-input);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            padding: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .powerup-item:hover {
+            border-color: var(--accent-green);
+            transform: scale(1.02);
+        }
+
+        .powerup-item.owned {
+            border-color: var(--accent-green);
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(6, 182, 212, 0.1));
+        }
+
+        .powerup-item.cant-afford {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .powerup-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .powerup-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .powerup-cost {
+            background: var(--accent-gold);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .powerup-desc {
+            font-size: 11px;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
+        .powerup-owned-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: var(--accent-green);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 9px;
+            font-weight: 700;
+        }
+
+        /* Active Powerups Display */
+        .active-powerup-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, var(--accent-green), var(--accent-cyan));
+            color: white;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 700;
+            margin: 4px;
+            animation: pulseGlow 2s infinite;
+        }
+
+        /* Game Area */
+        .game-area {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .mode-selector {
+            display: flex;
+            gap: 12px;
+            padding: 8px;
+            background: var(--bg-panel);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+
+        .mode-btn {
+            flex: 1;
+            padding: 16px;
+            background: transparent;
+            border: 2px solid transparent;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-main);
+            font-weight: 600;
+        }
+
+        .mode-btn:hover {
+            background: var(--bg-input);
+        }
+
+        .mode-btn.active {
+            background: var(--bg-input);
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+        }
+
+        .mode-icon {
+            font-size: 28px;
+        }
+
+        .mode-name {
+            font-size: 14px;
+        }
+
+        .mode-desc {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-align: center;
+        }
+
+        .game-panel {
+            background: var(--bg-panel);
+            border-radius: 16px;
+            padding: 32px;
+            border: 1px solid var(--border);
+            backdrop-filter: blur(20px);
+        }
+
+        .game-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .stock-info {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .stock-ticker {
+            font-size: 32px;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .stock-date {
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        .game-stats {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: var(--bg-input);
+            padding: 16px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--accent-cyan);
+            margin-bottom: 4px;
+        }
+
+        .stat-value.gold {
+            background: linear-gradient(135deg, var(--accent-gold), #eab308);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .learning-hint {
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.1), rgba(59, 130, 246, 0.1));
+            border: 2px solid var(--accent-purple);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 24px;
+            display: none;
+        }
+
+        .learning-hint.show {
+            display: block;
+            animation: slideIn 0.5s ease;
+        }
+
+        .hint-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .hint-icon {
+            font-size: 32px;
+        }
+
+        .hint-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--accent-purple);
+        }
+
+        .hint-content {
+            font-size: 14px;
+            line-height: 1.6;
+            color: var(--text-main);
+        }
+
+        .chart-container {
+            background: var(--bg-input);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            height: 400px;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            margin-bottom: 24px;
+        }
+
+        .action-btn {
+            padding: 20px 48px;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 180px;
+            justify-content: center;
+        }
+
+        .action-btn:hover {
+            transform: translateY(-4px);
+        }
+
+        .btn-buy {
+            background: linear-gradient(135deg, var(--accent-green), #059669);
+            color: white;
+            box-shadow: 0 8px 20px rgba(16, 185, 129, 0.4);
+        }
+
+        .btn-buy:hover {
+            box-shadow: 0 12px 30px rgba(16, 185, 129, 0.6);
+        }
+
+        .btn-hold {
+            background: linear-gradient(135deg, var(--accent-gold), #d97706);
+            color: white;
+            box-shadow: 0 8px 20px rgba(245, 158, 11, 0.4);
+        }
+
+        .btn-hold:hover {
+            box-shadow: 0 12px 30px rgba(245, 158, 11, 0.6);
+        }
+
+        .btn-skip {
+            background: linear-gradient(135deg, var(--accent-red), #b91c1c);
+            color: white;
+            box-shadow: 0 8px 20px rgba(239, 68, 68, 0.4);
+        }
+
+        .btn-skip:hover {
+            box-shadow: 0 12px 30px rgba(239, 68, 68, 0.6);
+        }
+
+        .result-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
+
+        .result-modal.show {
+            display: flex;
+            animation: slideIn 0.4s ease;
+        }
+
+        .result-content {
+            background: var(--bg-panel);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 700px;
+            border: 2px solid var(--border);
+            text-align: center;
+            position: relative;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .result-icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+            animation: celebrate 0.6s ease;
+        }
+
+        .result-title {
+            font-size: 32px;
+            font-weight: 800;
+            margin-bottom: 16px;
+        }
+
+        .result-title.correct {
+            color: var(--accent-green);
+        }
+
+        .result-title.incorrect {
+            color: var(--accent-red);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-muted);
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1400px) {
+            .main-layout {
+                grid-template-columns: 280px 1fr 320px;
+            }
+        }
+
+        @media (max-width: 1200px) {
+            .main-layout {
+                grid-template-columns: 1fr;
+            }
+            
+            .sidebar, .resources-panel {
+                grid-template-columns: repeat(2, 1fr);
+                display: grid;
+            }
+            
+            .game-stats {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 12px;
+            }
+            
+            .header {
+                flex-direction: column;
+                gap: 16px;
+            }
+            
+            .header-controls {
+                width: 100%;
+                justify-content: space-between;
+            }
+            
+            .sidebar, .resources-panel {
+                grid-template-columns: 1fr;
+            }
+            
+            .game-stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+            }
+            
+            .action-btn {
+                width: 100%;
+            }
+            
+            .mode-selector {
+                flex-direction: column;
+            }
+            
+            .achievements-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+    </style>
+</head>
+<body data-theme="dark">
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-left">
+                <div class="logo">📈 Stock Trading Academy</div>
+                <div class="level-badge" id="levelBadge">
+                    <span>⭐</span>
+                    <span id="levelText">Level 1 - Beginner</span>
+                </div>
+            </div>
+            <div class="header-controls">
+                <button class="btn btn-secondary" id="encyclopediaBtn">📚 Encyclopedia</button>
+                <button class="btn btn-secondary" id="themeToggle">🌙 Dark Mode</button>
+                <button class="btn btn-secondary" id="dashboardBtn">🏠 Dashboard</button>
+                <button class="btn btn-primary" id="logoutBtn">Logout</button>
+            </div>
+        </div>
+
+        <!-- Main Layout -->
+        <div class="main-layout">
+            <!-- Left Sidebar - Learning Progress -->
+            <div class="sidebar">
+                <!-- Learning Path -->
+                <div class="panel">
+                    <div class="panel-title">
+                        <span class="panel-icon">🎓</span>
+                        Your Learning Path
+                    </div>
+                    <div class="learning-path" id="learningPath">
+                        <!-- Populated by JS -->
+                    </div>
+                    
+                    <!-- XP Progress -->
+                    <div class="xp-container">
+                        <div class="xp-header">
+                            <span id="xpText">0 / 100 XP</span>
+                            <span id="xpLevel">Level 1</span>
+                        </div>
+                        <div class="xp-bar">
+                            <div class="xp-fill" id="xpFill" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Achievements -->
+                <div class="panel">
+                    <div class="panel-title">
+                        <span class="panel-icon">🏆</span>
+                        Achievements
+                    </div>
+                    <div class="achievements-grid" id="achievementsGrid">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Game Area -->
+            <div class="game-area">
+                <!-- Mode Selector -->
+                <div class="mode-selector">
+                    <button class="mode-btn active" data-mode="tutorial">
+                        <span class="mode-icon">🎓</span>
+                        <span class="mode-name">Tutorial</span>
+                        <span class="mode-desc">5 questions • Always hints • 0.5x rewards</span>
+                    </button>
+                    <button class="mode-btn" data-mode="learning">
+                        <span class="mode-icon">📖</span>
+                        <span class="mode-name">Learning</span>
+                        <span class="mode-desc">10 questions • Optional hints • 0.75x rewards</span>
+                    </button>
+                    <button class="mode-btn" data-mode="practice">
+                        <span class="mode-icon">💪</span>
+                        <span class="mode-name">Practice</span>
+                        <span class="mode-desc">15 questions • 30s timer • 1x rewards</span>
+                    </button>
+                    <button class="mode-btn" data-mode="challenge">
+                    <span class="mode-icon">🏆</span>
+                    <span class="mode-name">Challenge</span>
+                    <span class="mode-desc">20 questions • 20s timer • 2x rewards • 3 lives</span>
+                    </button>
+                </div>
+
+
+                <!-- Game Panel -->
+                <div class="game-panel">
+                    <!-- Game Header -->
+                    <div class="game-header">
+                        <div class="stock-info">
+                            <div class="stock-ticker" id="stockTicker">AAPL</div>
+                            <div class="stock-date" id="stockDate">Loading...</div>
+                        </div>
+                        <button class="btn btn-secondary" id="changeTickerBtn">🔄 Change Stock</button>
+                    </div>
+
+                    <!-- Game Stats -->
+                    <div class="game-stats">
+                        <div class="stat-card">
+                            <div class="stat-value gold" id="coinCount">0</div>
+                            <div class="stat-label">🪙 Coins</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="currentStreak">0</div>
+                            <div class="stat-label">🔥 Streak</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="accuracyRate">0%</div>
+                            <div class="stat-label">🎯 Accuracy</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="questionsAnswered">0/10</div>
+                            <div class="stat-label">📊 Progress</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="xpEarned">0 XP</div>
+                            <div class="stat-label">⭐ XP Earned</div>
+                        </div>
+                    </div>
+
+                    <!-- Learning Hint -->
+                    <div class="learning-hint" id="learningHint">
+                        <div class="hint-header">
+                            <span class="hint-icon">💡</span>
+                            <span class="hint-title">Learning Tip</span>
+                        </div>
+                        <div class="hint-content" id="hintContent">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Chart Container -->
+                    <div class="chart-container">
+                        <canvas id="priceChart"></canvas>
+                    </div>
+
+                    <!-- Question Area -->
+                    <div class="question-area" style="text-align: center; margin: 24px 0;">
+                        <div style="font-size: 24px; font-weight: 700; margin-bottom: 12px;">
+                            What should you do with this stock?
+                        </div>
+                        <div id="questionHint" style="font-size: 14px; color: var(--text-muted);">
+                            Based on the technical indicators and chart pattern
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="action-buttons">
+                        <button class="action-btn btn-buy" id="buyBtn">
+                            <span>📈</span>
+                            <span>BUY</span>
+                        </button>
+                        <button class="action-btn btn-hold" id="holdBtn">
+                            <span>⏸️</span>
+                            <span>HOLD</span>
+                        </button>
+                        <button class="action-btn btn-skip" id="skipBtn">
+                            <span>📉</span>
+                            <span>SKIP</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Sidebar - Resources & Shop -->
+            <div class="resources-panel" style="display: flex; flex-direction: column; gap: 20px;">
+                <!-- Leaderboard -->
+                <div class="panel">
+                    <div class="panel-title">
+                        <span class="panel-icon">🏆</span>
+                        Global Leaderboard
+                    </div>
+                    <div class="leaderboard-list" id="leaderboardList">
+                        <div class="loading">Loading rankings...</div>
+                    </div>
+                </div>
+
+                <!-- Powerup Shop -->
+                <div class="panel">
+                    <div class="panel-title">
+                        <span class="panel-icon">🛒</span>
+                        Powerup Shop
+                    </div>
+                    <div class="coin-balance" id="coinBalance">
+                        <span class="coin-icon">🪙</span>
+                        <span id="totalCoins">0</span> Coins
+                    </div>
+                    <div class="powerup-grid" id="powerupShop">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                    <div class="active-powerups" id="activePowerups" style="margin-top: 16px; display: none;">
+                        <div style="font-size: 12px; font-weight: 700; color: var(--text-muted); margin-bottom: 8px;">
+                            ⚡ ACTIVE POWERUPS
+                        </div>
+                        <div id="activePowerupsList"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Result Modal -->
+        <div class="result-modal" id="resultModal">
+            <div class="result-content">
+                <div class="result-icon" id="resultIcon"></div>
+                <div class="result-title" id="resultTitle">Correct!</div>
+                <div class="result-explanation" style="background: var(--bg-input); padding: 20px; border-radius: 12px; margin: 20px 0; text-align: left;">
+                    <div style="font-size: 16px; font-weight: 700; margin-bottom: 12px; color: var(--accent-cyan);">
+                        Why This Decision?
+                    </div>
+                    <div style="font-size: 14px; line-height: 1.6; margin-bottom: 12px;" id="explanationText"></div>
+                </div>
+                <div style="display: flex; justify-content: center; gap: 24px; margin: 24px 0;">
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                        <div style="font-size: 28px; font-weight: 800; color: var(--accent-gold);" id="rewardCoins">+10</div>
+                        <div style="font-size: 12px; color: var(--text-muted);">Coins Earned</div>
+                    </div>
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                        <div style="font-size: 28px; font-weight: 800; color: var(--accent-gold);" id="rewardXP">+15</div>
+                        <div style="font-size: 12px; color: var(--text-muted);">XP Gained</div>
+                    </div>
+                </div>
+                <button class="btn btn-primary" id="nextQuestionBtn" style="margin-top: 20px; width: 100%;">
+                    Continue Learning →
+                </button>
+            </div>
+        </div>
+    </div>
+
+<!-- ============================================================================ -->
+<!-- ========================= END OF PART 1 =================================== -->
+<!-- ============================================================================ -->
+<!-- Copy from here down will be in PART 2 (JavaScript section)                -->
+<!-- ============================================================================ -->
+
+<script>
+// ============================================================================
+// FIREBASE CONFIGURATION
+// ============================================================================
+const firebaseConfig = {
+    apiKey: "AIzaSyAFVns8fWpaD-uwaRDskVM4QPXTPfIiahc",
+    authDomain: "stock-signal-api-d0291.firebaseapp.com",
+    projectId: "stock-signal-api-d0291",
+    storageBucket: "stock-signal-api-d0291.firebasestorage.app",
+    messagingSenderId: "498426661242",
+    appId: "1:498426661242:web:033b8af321d874e99aaec3",
+    measurementId: "G-M23P4FNF61"
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+// API Base URL
+const API_BASE = 'https://stock-signal-api.onrender.com';
+
+let currentUser = null;
+let priceChart = null;
+
+// ============================================================================
+// LESSON CONFIGURATION
+// ============================================================================
+const LESSONS = [
+    {
+        id: 1,
+        title: 'Stock Market Basics',
+        desc: 'Understanding what stocks are and how markets work',
+        focus: ['basics'],
+        unlocked: true,
+        modules: ['What is a stock?', 'How stock prices move', 'Reading price charts', 'Volume basics']
+    },
+    {
+        id: 2,
+        title: 'Understanding Trends',
+        desc: 'Learn to identify uptrends, downtrends, and sideways markets',
+        focus: ['ma10', 'ma20'],
+        unlocked: false,
+        modules: ['What is a trend?', 'Moving averages explained', 'Support and resistance', 'Trend confirmation']
+    },
+    {
+        id: 3,
+        title: 'Momentum Indicators',
+        desc: 'Master RSI and MACD for entry/exit timing',
+        focus: ['rsi', 'macd'],
+        unlocked: false,
+        modules: ['RSI explained', 'Overbought/oversold zones', 'MACD signals', 'Divergence patterns']
+    },
+    {
+        id: 4,
+        title: 'Volatility & Risk',
+        desc: 'Understand price volatility using Bollinger Bands and ATR',
+        focus: ['bbwidth', 'atr14', 'vol20d'],
+        unlocked: false,
+        modules: ['What is volatility?', 'Bollinger Bands', 'ATR for stop-loss', 'Risk management']
+    },
+    {
+        id: 5,
+        title: 'Volume Analysis',
+        desc: 'Confirm trends with volume patterns',
+        focus: ['volumez'],
+        unlocked: false,
+        modules: ['Volume basics', 'Volume confirmation', 'Accumulation/distribution', 'Volume breakouts']
+    },
+    {
+        id: 6,
+        title: 'Pattern Recognition',
+        desc: 'Identify common chart patterns',
+        focus: ['all'],
+        unlocked: false,
+        modules: ['Head and shoulders', 'Double tops/bottoms', 'Triangles', 'Flags and pennants']
+    },
+    {
+        id: 7,
+        title: 'Risk Management',
+        desc: 'Position sizing and portfolio management',
+        focus: ['all'],
+        unlocked: false,
+        modules: ['Position sizing', 'Stop-loss strategies', 'Portfolio diversification', 'Risk/reward ratio']
+    },
+    {
+        id: 8,
+        title: 'Master Trader',
+        desc: 'Combine all indicators for expert decisions',
+        focus: ['all'],
+        unlocked: false,
+        modules: ['Multi-timeframe analysis', 'Confluence trading', 'Market psychology', 'Building a trading plan']
+    }
+];
+
+// ============================================================================
+// ACHIEVEMENTS CONFIGURATION
+// ============================================================================
+const ACHIEVEMENTS = [
+    { id: 'firstwin', name: 'First Win', icon: '🏆', condition: (stats) => stats.correct >= 1 },
+    { id: 'streak5', name: '5 Streak', icon: '🔥', condition: (stats) => stats.maxStreak >= 5 },
+    { id: 'accuracy80', name: '80% Accuracy', icon: '🎯', condition: (stats) => stats.accuracy >= 80 },
+    { id: 'questions50', name: '50 Questions', icon: '📚', condition: (stats) => stats.totalAnswered >= 50 },
+    { id: 'perfect10', name: 'Perfect 10', icon: '💯', condition: (stats) => stats.perfectRounds >= 1 },
+    { id: 'expert', name: 'Expert', icon: '👑', condition: (stats) => stats.accuracy >= 90 && stats.totalAnswered >= 100 },
+    { id: 'scholar', name: 'Scholar', icon: '🎓', condition: (stats) => stats.lessonsCompleted >= 5 },
+    { id: 'strategist', name: 'Strategist', icon: '⚔️', condition: (stats) => stats.strategiesLearned >= 3 },
+    { id: 'quizmaster', name: 'Quiz Master', icon: '🧠', condition: (stats) => stats.quizzesCompleted >= 10 },
+    { id: 'level5', name: 'Level 5', icon: '⭐', condition: (stats) => stats.level >= 5 }
+];
+
+// ============================================================================
+// POWERUP DEFINITIONS
+// ============================================================================
+const POWERUPS = {
+    hint: {
+        id: 'hint',
+        name: 'Hint',
+        icon: '💡',
+        cost: 50,
+        desc: 'Reveals the best indicator to focus on for this question',
+        type: 'instant'
+    },
+    freeze: {
+        id: 'freeze',
+        name: 'Freeze Streak',
+        icon: '❄️',
+        cost: 100,
+        desc: 'Protects your streak on the next wrong answer',
+        type: 'passive'
+    },
+    skip: {
+        id: 'skip',
+        name: 'Skip Question',
+        icon: '🔄',
+        cost: 30,
+        desc: 'Skip this question without penalty',
+        type: 'instant'
+    },
+    timemachine: {
+        id: 'timemachine',
+        name: 'Time Machine',
+        icon: '⏰',
+        cost: 75,
+        desc: 'See the future price movement',
+        type: 'instant'
+    },
+    fiftyfifty: {
+        id: 'fiftyfifty',
+        name: '50/50',
+        icon: '🎯',
+        cost: 40,
+        desc: 'Removes one wrong answer option',
+        type: 'instant'
+    },
+    oracle: {
+        id: 'oracle',
+        name: 'Oracle',
+        icon: '🔮',
+        cost: 80,
+        desc: 'Shows confidence percentage for each choice',
+        type: 'instant'
+    },
+    double: {
+        id: 'double',
+        name: 'Double Rewards',
+        icon: '⭐',
+        cost: 60,
+        desc: 'Next correct answer gives 2x coins and XP',
+        type: 'passive'
+    },
+    analysis: {
+        id: 'analysis',
+        name: 'Full Analysis',
+        icon: '📊',
+        cost: 150,
+        desc: 'Get expert AI recommendation with reasoning',
+        type: 'instant'
+    }
+};
+
+// ============================================================================
+// INDICATOR INFORMATION
+// ============================================================================
+const INDICATORINFO = {
+    ma10: {
+        name: 'MA 10',
+        desc: '10-day Moving Average - Short-term trend',
+        tooltip: 'When price is above MA10, it indicates short-term bullish momentum. Below indicates bearish.'
+    },
+    ma20: {
+        name: 'MA 20',
+        desc: '20-day Moving Average - Medium-term trend',
+        tooltip: 'MA20 represents the medium-term trend. Price above MA20 suggests sustained bullish sentiment.'
+    },
+    rsi: {
+        name: 'RSI',
+        desc: 'Relative Strength Index - Momentum oscillator',
+        tooltip: 'RSI > 70: Overbought (potential sell), RSI < 30: Oversold (potential buy). RSI = 50 is neutral.'
+    },
+    macd: {
+        name: 'MACD',
+        desc: 'Moving Average Convergence Divergence',
+        tooltip: 'MACD above signal line = Bullish. Below signal line = Bearish. Histogram shows momentum strength.'
+    },
+    bbwidth: {
+        name: 'BB Width',
+        desc: 'Bollinger Bands Width - Volatility measure',
+        tooltip: 'High BB width = High volatility/risk. Low BB width = Low volatility, potential breakout coming.'
+    },
+    atr14: {
+        name: 'ATR',
+        desc: 'Average True Range - Price volatility',
+        tooltip: 'Higher ATR means bigger price swings. Use for position sizing and stop-loss placement.'
+    },
+    volumez: {
+        name: 'Volume',
+        desc: 'Volume Z-Score - Trading activity',
+        tooltip: 'Positive = Higher than average volume confirms trend. Negative = Lower volume = weak trend.'
+    },
+    vol20d: {
+        name: 'Volatility',
+        desc: '20-day Price Volatility',
+        tooltip: 'Measures how much the price fluctuates. Higher volatility = Higher risk AND opportunity.'
+    }
+};
+
+// ============================================================================
+// GAME MODE SETTINGS (NEW)
+// ============================================================================
+function getModeSettings() {
+    const settings = {
+        tutorial: {
+            name: 'Tutorial Mode',
+            questionsPerLesson: 5,
+            showHints: true,
+            alwaysShowHint: true,
+            coinMultiplier: 0.5,
+            xpMultiplier: 0.5,
+            hasTimer: false,
+            allowRetry: true,
+            description: 'Learn with step-by-step guidance'
+        },
+        learning: {
+            name: 'Learning Mode',
+            questionsPerLesson: 10,
+            showHints: true,
+            alwaysShowHint: false,
+            coinMultiplier: 0.75,
+            xpMultiplier: 0.75,
+            hasTimer: false,
+            allowRetry: true,
+            description: 'Practice with optional hints'
+        },
+        practice: {
+            name: 'Practice Mode',
+            questionsPerLesson: 15,
+            showHints: false,
+            alwaysShowHint: false,
+            coinMultiplier: 1.0,
+            xpMultiplier: 1.0,
+            hasTimer: true,
+            timeLimit: 30,
+            allowRetry: false,
+            description: 'Timed challenges for full rewards'
+        },
+        challenge: {
+            name: 'Challenge Mode',
+            questionsPerLesson: 20,
+            showHints: false,
+            alwaysShowHint: false,
+            coinMultiplier: 2.0,
+            xpMultiplier: 2.0,
+            hasTimer: true,
+            timeLimit: 20,
+            allowRetry: false,
+            maxMistakes: 3,
+            description: 'Hardcore mode - 3 lives only!'
+        }
+    };
+    
+    return settings[gameState.mode] || settings.learning;
+}
+
+// ============================================================================
+// GAME STATE
+// ============================================================================
+let gameState = {
+    mode: 'tutorial',
+    currentLesson: 1,
+    currentQuestion: 0,
+    totalQuestions: 10,
+    score: 0,
+    streak: 0,
+    maxStreak: 0,
+    correct: 0,
+    incorrect: 0,
+    total: 0,
+    coins: 0,
+    ticker: 'AAPL',
+    historyData: null,
+    currentIndex: 0,
+    xp: 0,
+    level: 1,
+    activePowerups: {},
+    ownedPowerups: {},
+    challengeMistakes: 0,  
+    questionStartTime: 0,
+    userStats: {
+        totalAnswered: 0,
+        accuracy: 0,
+        perfectRounds: 0,
+        unlockedAchievements: [],
+        lessonsCompleted: 0,
+        strategiesLearned: 0,
+        quizzesCompleted: 0,
+        level: 1,
+        xp: 0,
+        coins: 0,
+        displayName: ''
+    }
+};
+
+// ============================================================================
+// AUTHENTICATION
+// ============================================================================
+auth.onAuthStateChanged(user => {
+    if (user) {
+        currentUser = user;
+        initializeGame(user);
+    } else {
+        window.location.href = 'index.html';
+    }
+});
+
+// ============================================================================
+// INITIALIZE GAME
+// ============================================================================
+async function initializeGame(user) {
+    try {
+        // Load user stats
+        const userDoc = await db.collection('users').doc(user.uid).get();
+        
+        if (userDoc.exists) {
+            const data = userDoc.data();
+            
+            // Load game state
+            if (data.gameState) {
+                gameState.coins = data.gameState.coins || 0;
+                gameState.xp = data.gameState.xp || 0;
+                gameState.level = data.gameState.level || 1;
+                gameState.streak = data.gameState.streak || 0;
+                gameState.correct = data.gameState.correct || 0;
+                gameState.incorrect = data.gameState.incorrect || 0;
+                gameState.activePowerups = data.gameState.activePowerups || {};
+                gameState.ownedPowerups = data.gameState.ownedPowerups || {};
+            }
+            
+            // Load user stats
+            gameState.userStats = {
+                totalAnswered: data.gamesPlayed || 0,
+                accuracy: data.winRate || 0,
+                perfectRounds: data.perfectGames || 0,
+                unlockedAchievements: data.achievements || [],
+                lessonsCompleted: data.lessonsCompleted || 0,
+                strategiesLearned: data.strategiesLearned || 0,
+                quizzesCompleted: data.quizzesCompleted || 0,
+                level: data.level || 1,
+                xp: data.xp || 0,
+                coins: data.gameState?.coins || 0,
+                displayName: data.displayName || ''
+            };
+            
+            gameState.level = gameState.userStats.level;
+            gameState.xp = gameState.userStats.xp;
+        }
+        
+        // Render UI
+        renderLearningPath();
+        renderAchievements();
+        renderPowerupShop();
+        updateLevelDisplay();
+        updateStatsDisplay();
+        showActivePowerups();
+        loadLeaderboard();
+        
+        // Load first stock
+        await loadNewStock();
+        
+        // Setup event listeners
+        setupEventListeners();
+        
+    } catch (error) {
+        console.error('Error initializing game:', error);
+    }
+}
+
+// ============================================================================
+// RENDER FUNCTIONS
+// ============================================================================
+function renderLearningPath() {
+    const container = document.getElementById('learningPath');
+    
+    container.innerHTML = LESSONS.map(lesson => {
+        const isActive = lesson.id === gameState.currentLesson;
+        const isCompleted = lesson.id < gameState.currentLesson;
+        const isLocked = !lesson.unlocked && !isCompleted && !isActive;
+        
+        let status = '🔒';
+        if (isCompleted) status = '✅';
+        else if (isActive) status = '▶️';
+        
+        let classes = 'lesson-item';
+        if (isActive) classes += ' active';
+        if (isCompleted) classes += ' completed';
+        if (isLocked) classes += ' locked';
+        
+        return `
+            <div class="${classes}" data-lesson="${lesson.id}">
+                <div class="lesson-header">
+                    <span class="lesson-number">Lesson ${lesson.id}</span>
+                    <span class="lesson-status">${status}</span>
+                </div>
+                <div class="lesson-title">${lesson.title}</div>
+                <div class="lesson-desc">${lesson.desc}</div>
+                ${isActive ? `
+                    <div class="lesson-progress">
+                        <div class="lesson-progress-bar" style="width: ${(gameState.currentQuestion / gameState.totalQuestions) * 100}%"></div>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    }).join('');
+}
+
+function renderAchievements() {
+    const container = document.getElementById('achievementsGrid');
+    
+    container.innerHTML = ACHIEVEMENTS.map(achievement => {
+        const unlocked = gameState.userStats.unlockedAchievements.includes(achievement.id) || 
+                        achievement.condition(gameState.userStats);
+        
+        return `
+            <div class="achievement-badge ${unlocked ? 'unlocked' : ''}" title="${achievement.name}">
+                <div class="achievement-icon">${achievement.icon}</div>
+                <div class="achievement-name">${achievement.name}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+function renderPowerupShop() {
+    const container = document.getElementById('powerupShop');
+    const coins = gameState.coins;
+    
+    container.innerHTML = Object.values(POWERUPS).map(powerup => {
+        const owned = gameState.ownedPowerups[powerup.id] || 0;
+        const canAfford = coins >= powerup.cost;
+        const isActive = gameState.activePowerups[powerup.id];
+        
+        return `
+            <div class="powerup-item ${!canAfford ? 'cant-afford' : ''} ${isActive ? 'owned' : ''}"
+                 onclick="buyPowerup('${powerup.id}')">
+                ${owned > 0 ? `<div class="powerup-owned-badge">x${owned}</div>` : ''}
+                <div class="powerup-header">
+                    <div class="powerup-title">
+                        <span>${powerup.icon}</span>
+                        <span>${powerup.name}</span>
+                    </div>
+                    <div class="powerup-cost">🪙 ${powerup.cost}</div>
+                </div>
+                <div class="powerup-desc">${powerup.desc}</div>
+                ${isActive ? '<div style="margin-top: 6px; color: var(--accent-green); font-size: 10px; font-weight: 700;">✓ ACTIVE</div>' : ''}
+            </div>
+        `;
+    }).join('');
+    
+    // Update coin display
+    document.getElementById('totalCoins').textContent = coins;
+    document.getElementById('coinCount').textContent = coins;
+}
+
+function updateLevelDisplay() {
+    const xpForNextLevel = gameState.level * 100;
+    const xpProgress = gameState.xp % 100;
+    
+    document.getElementById('levelBadge').innerHTML = `<span>⭐</span><span>Level ${gameState.level} - ${getLevelTitle()}</span>`;
+    document.getElementById('xpText').textContent = `${xpProgress} / 100 XP`;
+    document.getElementById('xpLevel').textContent = `Level ${gameState.level}`;
+    document.getElementById('xpFill').style.width = `${xpProgress}%`;
+}
+
+function getLevelTitle() {
+    if (gameState.level >= 10) return 'Master Trader';
+    if (gameState.level >= 8) return 'Expert';
+    if (gameState.level >= 6) return 'Advanced';
+    if (gameState.level >= 4) return 'Intermediate';
+    if (gameState.level >= 2) return 'Novice';
+    return 'Beginner';
+}
+
+function updateStatsDisplay() {
+    document.getElementById('coinCount').textContent = gameState.coins;
+    document.getElementById('currentStreak').textContent = gameState.streak;
+    document.getElementById('questionsAnswered').textContent = `${gameState.currentQuestion}/${gameState.totalQuestions}`;
+    
+    const accuracy = gameState.total > 0 ? Math.round((gameState.correct / gameState.total) * 100) : 0;
+    document.getElementById('accuracyRate').textContent = `${accuracy}%`;
+    
+    document.getElementById('xpEarned').textContent = `${gameState.xp % 100} XP`;
+}
+
+// ============================================================================
+// POWERUP FUNCTIONS
+// ============================================================================
+function buyPowerup(powerupId) {
+    const powerup = POWERUPS[powerupId];
+    
+    if (!powerup) return;
+    
+    if (gameState.coins < powerup.cost) {
+        alert(`Not enough coins! You need ${powerup.cost} coins but only have ${gameState.coins}.`);
+        return;
+    }
+    
+    if (gameState.activePowerups[powerupId]) {
+        alert(`${powerup.name} is already active!`);
+        return;
+    }
+    
+    gameState.coins -= powerup.cost;
+    gameState.userStats.coins = gameState.coins;
+    
+    if (!gameState.ownedPowerups[powerupId]) {
+        gameState.ownedPowerups[powerupId] = 0;
+    }
+    gameState.ownedPowerups[powerupId]++;
+    
+    if (powerup.type === 'instant') {
+        usePowerup(powerupId);
+    } else if (powerup.type === 'passive') {
+        gameState.activePowerups[powerupId] = true;
+        showActivePowerups();
+    }
+    
+    renderPowerupShop();
+    saveGameState();
+    alert(`✅ ${powerup.icon} ${powerup.name} purchased!`);
+}
+
+function usePowerup(powerupId) {
+    const powerup = POWERUPS[powerupId];
+    
+    switch(powerupId) {
+        case 'hint':
+            showHintPowerup();
+            break;
+        case 'skip':
+            skipQuestion();
+            break;
+        case 'timemachine':
+            showTimeMachine();
+            break;
+        case 'fiftyfifty':
+            use5050();
+            break;
+        case 'oracle':
+            showOracle();
+            break;
+        case 'analysis':
+            showFullAnalysis();
+            break;
+    }
+    
+    gameState.ownedPowerups[powerupId]--;
+    if (gameState.ownedPowerups[powerupId] <= 0) {
+        delete gameState.ownedPowerups[powerupId];
+    }
+    
+    renderPowerupShop();
+}
+
+function showHintPowerup() {
+    const currentLesson = LESSONS.find(l => l.id === gameState.currentLesson);
+    const focusIndicators = currentLesson.focus[0] === 'all' ? ['rsi', 'macd'] : currentLesson.focus;
+    const bestIndicator = focusIndicators[0];
+    
+    const hintText = `💡 HINT: Focus on the ${INDICATORINFO[bestIndicator]?.name || bestIndicator.toUpperCase()} indicator!`;
+    
+    document.getElementById('learningHint').classList.add('show');
+    document.getElementById('hintContent').innerHTML = `
+        <div style="font-size: 14px; font-weight: 700; color: var(--accent-gold); margin-bottom: 8px;">
+            ${hintText}
+        </div>
+        <p>${INDICATORINFO[bestIndicator]?.tooltip || 'This indicator is key.'}</p>
+    `;
+}
+
+function skipQuestion() {
+    alert('⏭️ Question skipped! Moving to next...');
+    loadNewStock();
+}
+
+function showTimeMachine() {
+    const currentData = gameState.historyData.history[gameState.currentIndex];
+    const futurePrice = currentData.futureprice;
+    const currentPrice = currentData.price;
+    
+    if (futurePrice) {
+        const change = ((futurePrice - currentPrice) / currentPrice * 100).toFixed(2);
+        const direction = change > 0 ? '📈' : '📉';
+        alert(`⏰ TIME MACHINE: In 5 days, price will be $${futurePrice.toFixed(2)} (${direction} ${change}%)`);
+    } else {
+        alert('⏰ TIME MACHINE: Future data not available.');
+    }
+}
+
+function use5050() {
+    const correctAnswer = determineCorrectAnswer();
+    const buttons = ['buyBtn', 'holdBtn', 'skipBtn'];
+    const actions = ['BUY', 'HOLD', 'SKIP'];
+    
+    const wrongButtons = buttons.filter((btn, idx) => actions[idx] !== correctAnswer);
+    
+    if (wrongButtons.length > 0) {
+        const toDisable = wrongButtons[Math.floor(Math.random() * wrongButtons.length)];
+        const btnElement = document.getElementById(toDisable);
+        btnElement.disabled = true;
+        btnElement.style.opacity = '0.3';
+        btnElement.style.cursor = 'not-allowed';
+        alert('🎯 50/50: One wrong answer removed!');
+    }
+}
+
+function showOracle() {
+    const currentData = gameState.historyData.history[gameState.currentIndex];
+    const futurePrice = currentData.futureprice;
+    const currentPrice = currentData.price;
+    const change = ((futurePrice - currentPrice) / currentPrice * 100);
+    
+    let buyConf, holdConf, skipConf;
+    
+    if (change > 2) {
+        buyConf = 85; holdConf = 10; skipConf = 5;
+    } else if (change < -2) {
+        buyConf = 5; holdConf = 10; skipConf = 85;
+    } else {
+        buyConf = 20; holdConf = 60; skipConf = 20;
+    }
+    
+    alert(`🔮 ORACLE PREDICTION:\n\nBUY: ${buyConf}%\nHOLD: ${holdConf}%\nSKIP: ${skipConf}%`);
+}
+
+function showFullAnalysis() {
+    if (!gameState.historyData) return;
+    
+    const idx = gameState.currentIndex;
+    const currentData = gameState.historyData.history[idx];
+    const price = currentData.price;
+    
+    // Calculate simple moving averages from recent data
+    const recentPrices = gameState.historyData.history.slice(Math.max(0, idx - 20), idx + 1).map(d => d.price);
+    const ma10 = recentPrices.slice(-10).reduce((a, b) => a + b, 0) / Math.min(10, recentPrices.length);
+    const ma20 = recentPrices.reduce((a, b) => a + b, 0) / recentPrices.length;
+    
+    const analysis = `
+📊 FULL ANALYSIS:
+
+Price: $${price.toFixed(2)}
+MA10: $${ma10.toFixed(2)} ${price > ma10 ? '✅ Above' : '❌ Below'}
+MA20: $${ma20.toFixed(2)} ${price > ma20 ? '✅ Above' : '❌ Below'}
+
+Trend: ${ma10 > ma20 ? '📈 UPTREND' : '📉 DOWNTREND'}
+
+RECOMMENDATION:
+${ma10 > ma20 && price > ma10 
+    ? '✅ BUY - Strong uptrend' 
+    : ma10 < ma20 && price < ma10
+    ? '⛔ SKIP - Downtrend'
+    : '⚠️ HOLD - Mixed signals'}
+    `;
+    
+    alert(analysis);
+}
+
+function showActivePowerups() {
+    const container = document.getElementById('activePowerups');
+    const listContainer = document.getElementById('activePowerupsList');
+    
+    const activeList = Object.keys(gameState.activePowerups);
+    
+    if (activeList.length > 0) {
+        container.style.display = 'block';
+        listContainer.innerHTML = activeList.map(id => {
+            const powerup = POWERUPS[id];
+            return `<div class="active-powerup-badge">${powerup.icon} ${powerup.name}</div>`;
+        }).join('');
+    } else {
+        container.style.display = 'none';
+    }
+}
+
+// ============================================================================
+// LEADERBOARD FUNCTIONS
+// ============================================================================
+async function loadLeaderboard() {
+    const leaderboardList = document.getElementById('leaderboardList');
+    
+    try {
+        const snapshot = await db.collection('users')
+            .orderBy('gameState.coins', 'desc')
+            .limit(10)
+            .get();
+        
+        if (snapshot.empty) {
+            leaderboardList.innerHTML = '<div class="loading">No players yet!</div>';
+            return;
+        }
+        
+        let html = '';
+        let rank = 1;
+        
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            const isCurrentUser = doc.id === currentUser.uid;
+            const coins = data.gameState?.coins || 0;
+            const level = data.gameState?.level || 1;
+            const displayName = data.displayName || data.email?.split('@')[0] || 'Anonymous';
+            const accuracy = data.winRate || 0;
+            const gamesPlayed = data.gamesPlayed || 0;
+            
+            let rankClass = '';
+            let rankEmoji = rank;
+            if (rank === 1) { rankClass = 'first'; rankEmoji = '🥇'; }
+            else if (rank === 2) { rankClass = 'second'; rankEmoji = '🥈'; }
+            else if (rank === 3) { rankClass = 'third'; rankEmoji = '🥉'; }
+            
+            html += `
+                <div class="leaderboard-item ${isCurrentUser ? 'current-user' : ''}">
+                    <div class="lb-rank ${rankClass}">${rankEmoji}</div>
+                    <div class="lb-info">
+                        <div class="lb-name">
+                            ${displayName}
+                            ${isCurrentUser ? '(You)' : ''}
+                            ${isCurrentUser ? '<button class="edit-name-btn" onclick="editDisplayName()">✏️</button>' : ''}
+                        </div>
+                        <div class="lb-stats">Lv.${level} • ${gamesPlayed} games • ${accuracy}% acc</div>
+                    </div>
+                    <div class="lb-coins">🪙 ${coins}</div>
+                </div>
+            `;
+            
+            rank++;
+        });
+        
+        leaderboardList.innerHTML = html;
+        
+    } catch (error) {
+        console.error('Error loading leaderboard:', error);
+        leaderboardList.innerHTML = '<div class="loading">Failed to load</div>';
+    }
+}
+
+async function editDisplayName() {
+    const currentName = gameState.userStats.displayName || currentUser.email.split('@')[0];
+    const newName = prompt('Enter your display name (max 20 characters):', currentName);
+    
+    if (newName && newName.trim() !== '') {
+        const trimmedName = newName.trim().substring(0, 20);
+        
+        try {
+            await db.collection('users').doc(currentUser.uid).update({
+                displayName: trimmedName
+            });
+            
+            gameState.userStats.displayName = trimmedName;
+            alert('✅ Display name updated!');
+            loadLeaderboard();
+        } catch (error) {
+            alert('❌ Failed to update name.');
+        }
+    }
+}
+
+// ============================================================================
+// GAME LOGIC
+// ============================================================================
+async function loadNewStock() {
+    try {
+        const tickers = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'NVDA', 'META'];
+        gameState.ticker = tickers[Math.floor(Math.random() * tickers.length)];
+        document.getElementById('stockTicker').textContent = gameState.ticker;
+        
+        const response = await fetch(`${API_BASE}/history?ticker=${gameState.ticker}`);
+        const data = await response.json();
+        
+        gameState.historyData = data;
+        gameState.currentIndex = Math.floor(Math.random() * (data.history.length - 10));
+        
+        renderQuestion();
+        
+    } catch (error) {
+        console.error('Error loading stock:', error);
+        alert('Failed to load stock data. Please try again.');
+    }
+}
+
+// ============================================================================
+// TIMER SYSTEM (NEW)
+// ============================================================================
+let questionTimer = null;
+let timeRemaining = 0;
+
+function startQuestionTimer(seconds) {
+    clearInterval(questionTimer);
+    timeRemaining = seconds;
+    
+    // Create or update timer display
+    let timerDisplay = document.getElementById('questionTimer');
+    if (!timerDisplay) {
+        const questionArea = document.querySelector('.question-area');
+        if (!questionArea) return;
+        
+        timerDisplay = document.createElement('div');
+        timerDisplay.id = 'questionTimer';
+        timerDisplay.style.cssText = `
+            font-size: 32px;
+            font-weight: 800;
+            color: var(--accent-gold);
+            margin-top: 16px;
+            text-align: center;
+            animation: slideIn 0.3s ease;
+        `;
+        questionArea.appendChild(timerDisplay);
+    }
+    
+    updateTimerDisplay(timerDisplay);
+    
+    questionTimer = setInterval(() => {
+        timeRemaining--;
+        updateTimerDisplay(timerDisplay);
+        
+        if (timeRemaining <= 0) {
+            clearInterval(questionTimer);
+            // Auto-submit as timeout (counts as wrong answer)
+            alert('⏰ Time\'s up! Moving to next question...');
+            makeDecision('TIMEOUT');
+        }
+    }, 1000);
+}
+
+function updateTimerDisplay(display) {
+    display.textContent = `⏱️ ${timeRemaining}s`;
+    
+    if (timeRemaining <= 5) {
+        display.style.color = 'var(--accent-red)';
+        display.style.animation = 'pulseGlow 0.5s infinite';
+    } else if (timeRemaining <= 10) {
+        display.style.color = 'var(--accent-gold)';
+    } else {
+        display.style.color = 'var(--accent-cyan)';
+    }
+}
+
+function clearQuestionTimer() {
+    clearInterval(questionTimer);
+    const timerDisplay = document.getElementById('questionTimer');
+    if (timerDisplay) {
+        timerDisplay.remove();
+    }
+}
+        
+function renderQuestion() {
+    const currentData = gameState.historyData.history[gameState.currentIndex];
+    document.getElementById('stockDate').textContent = currentData.date;
+    
+    // ✅ Get mode-specific settings
+    const modeSettings = getModeSettings();
+    
+    // Update total questions based on mode
+    gameState.totalQuestions = modeSettings.questionsPerLesson;
+    
+    updateStatsDisplay();
+    renderChart();
+    
+    // Reset buttons
+    ['buyBtn', 'holdBtn', 'skipBtn'].forEach(id => {
+        const btn = document.getElementById(id);
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        btn.style.cursor = 'pointer';
+    });
+    
+    // ✅ Show hints based on mode
+    if (modeSettings.alwaysShowHint) {
+        // Tutorial mode: always show full hints
+        showLearningHint();
+    } else if (gameState.mode === 'learning' && modeSettings.showHints) {
+        // Learning mode: show hint button
+        const hintDiv = document.getElementById('learningHint');
+        hintDiv.classList.add('show');
+        document.getElementById('hintContent').innerHTML = `
+            <button onclick="showDetailedHint()" 
+                    style="padding: 12px 24px; background: linear-gradient(135deg, var(--accent-purple), var(--accent-blue)); 
+                           color: white; border: none; border-radius: 8px; cursor: pointer; 
+                           font-weight: 700; font-size: 14px; box-shadow: 0 4px 12px rgba(168, 85, 247, 0.3);">
+                💡 Show Hint (Free in Learning Mode)
+            </button>
+        `;
+    } else {
+        // Practice/Challenge: no hints
+        document.getElementById('learningHint').classList.remove('show');
+    }
+    
+    // ✅ Add timer for Practice/Challenge modes
+    if (modeSettings.hasTimer) {
+        startQuestionTimer(modeSettings.timeLimit);
+    }
+    
+    // ✅ Show challenge lives
+    if (gameState.mode === 'challenge') {
+        showChallengeLives(modeSettings.maxMistakes);
+    }
+}
+
+// ============================================================================
+// HELPER FUNCTIONS - ADD THIS ENTIRE SECTION HERE ✅
+// ============================================================================
+
+// Show detailed hint (for learning mode button)
+function showDetailedHint() {
+    showLearningHint();
+}
+
+// Show challenge mode lives
+function showChallengeLives(maxLives) {
+    const mistakes = gameState.challengeMistakes || 0;
+    const livesRemaining = maxLives - mistakes;
+    
+    let livesDiv = document.getElementById('challengeLives');
+    if (!livesDiv) {
+        const gameHeader = document.querySelector('.game-header');
+        livesDiv = document.createElement('div');
+        livesDiv.id = 'challengeLives';
+        livesDiv.style.cssText = `
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--accent-red);
+        `;
+        gameHeader.appendChild(livesDiv);
+    }
+    
+    const hearts = '❤️'.repeat(livesRemaining) + '🖤'.repeat(mistakes);
+    livesDiv.innerHTML = `<span>Lives: ${hearts}</span>`;
+    
+    if (livesRemaining <= 1) {
+        livesDiv.style.animation = 'pulseGlow 0.5s infinite';
+    }
+}
+
+// ← END OF PART 6
+
+function showLearningHint() {
+    const currentLesson = LESSONS.find(l => l.id === gameState.currentLesson);
+    const hint = `In this lesson, we're focusing on ${currentLesson.title}. Look at the chart and indicators to make your decision.`;
+    
+    document.getElementById('learningHint').classList.add('show');
+    document.getElementById('hintContent').innerHTML = `<p>${hint}</p>`;
+}
+
+function renderChart() {
+    const ctx = document.getElementById('priceChart').getContext('2d');
+    
+    const startIdx = Math.max(0, gameState.currentIndex - 30);
+    const endIdx = gameState.currentIndex + 1;
+    
+    const chartData = gameState.historyData.history.slice(startIdx, endIdx);
+    const dates = chartData.map(d => d.date);
+    const prices = chartData.map(d => d.price);
+    
+    // Calculate simple moving averages
+    const ma10 = [];
+    const ma20 = [];
+    
+    for (let i = 0; i < prices.length; i++) {
+        if (i >= 9) {
+            const sum10 = prices.slice(i - 9, i + 1).reduce((a, b) => a + b, 0);
+            ma10.push(sum10 / 10);
+        } else {
+            ma10.push(null);
+        }
+        
+        if (i >= 19) {
+            const sum20 = prices.slice(i - 19, i + 1).reduce((a, b) => a + b, 0);
+            ma20.push(sum20 / 20);
+        } else {
+            ma20.push(null);
+        }
+    }
+    
+    if (priceChart) priceChart.destroy();
+    
+    priceChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: dates,
+            datasets: [
+                {
+                    label: 'Price',
+                    data: prices,
+                    borderColor: '#06b6d4',
+                    backgroundColor: 'rgba(6, 182, 212, 0.1)',
+                    borderWidth: 3,
+                    tension: 0.4,
+                    fill: true
+                },
+                {
+                    label: 'MA10',
+                    data: ma10,
+                    borderColor: '#10b981',
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    tension: 0.4,
+                    fill: false
+                },
+                {
+                    label: 'MA20',
+                    data: ma20,
+                    borderColor: '#f59e0b',
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    tension: 0.4,
+                    fill: false
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    labels: {
+                        color: '#f1f5f9'
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    ticks: { color: '#94a3b8', maxRotation: 45 },
+                    grid: { color: 'rgba(148, 163, 184, 0.1)' }
+                },
+                y: {
+                    ticks: { color: '#94a3b8' },
+                    grid: { color: 'rgba(148, 163, 184, 0.1)' }
+                }
+            }
+        }
+    });
+}
+
+function determineCorrectAnswer() {
+    const currentData = gameState.historyData.history[gameState.currentIndex];
+    const futurePrice = currentData.futureprice;
+    const currentPrice = currentData.price;
+    
+    if (!futurePrice) return 'HOLD';
+    
+    const change = ((futurePrice - currentPrice) / currentPrice) * 100;
+    
+    // ✅ FIXED: Stricter thresholds prevent HOLD spam
+    if (change > 4) return 'BUY';       // Strong upward movement
+    if (change < -4) return 'SKIP';     // Strong downward movement
+    
+    // HOLD only for small movements (-2% to +2%)
+    if (change >= -2 && change <= 2) {
+        return 'HOLD';
+    }
+    
+    // For ambiguous cases (2-4% range), use indicators
+    const idx = gameState.currentIndex;
+    const recentPrices = gameState.historyData.history
+        .slice(Math.max(0, idx - 10), idx + 1)
+        .map(d => d.price);
+    
+    if (recentPrices.length >= 10) {
+        const ma10 = recentPrices.reduce((a,b) => a+b) / recentPrices.length;
+        
+        // Trend-based decision for ambiguous cases
+        if (change > 0 && currentPrice > ma10 * 1.01) return 'BUY';
+        if (change < 0 && currentPrice < ma10 * 0.99) return 'SKIP';
+    }
+    
+    return 'HOLD';
+}
+
+function makeDecision(choice) {
+    clearQuestionTimer();  // ✅ Stop timer
+    
+    const correctAnswer = determineCorrectAnswer();
+    const isCorrect = choice === correctAnswer && choice !== 'TIMEOUT';
+    
+    // ✅ Get mode settings
+    const modeSettings = getModeSettings();
+    
+    gameState.total++;
+    gameState.currentQuestion++;
+    
+    let coinReward = 0;
+    let xpReward = 0;
+    
+    if (isCorrect) {
+        gameState.correct++;
+        gameState.streak++;
+        
+        // ✅ Apply mode multipliers
+        coinReward = Math.round((10 + (gameState.streak - 1) * 2) * modeSettings.coinMultiplier);
+        xpReward = Math.round(15 * modeSettings.xpMultiplier);
+        
+        // Check for Double Rewards powerup
+        if (gameState.activePowerups['double']) {
+            coinReward *= 2;
+            xpReward *= 2;
+            delete gameState.activePowerups['double'];
+        }
+        
+        gameState.coins += coinReward;
+        addXP(xpReward);
+        
+    } else {
+        // ✅ Challenge mode: check max mistakes
+        if (gameState.mode === 'challenge') {
+            gameState.challengeMistakes = (gameState.challengeMistakes || 0) + 1;
+            if (gameState.challengeMistakes >= modeSettings.maxMistakes) {
+                alert(`💀 GAME OVER! You made ${modeSettings.maxMistakes} mistakes in Challenge Mode.\n\nFinal Score:\n✅ Correct: ${gameState.correct}\n❌ Wrong: ${gameState.incorrect}\n🪙 Coins Earned: ${gameState.coins}`);
+                gameState.currentQuestion = gameState.totalQuestions; // End game
+            }
+        }
+        
+        // Check for Freeze Streak powerup
+        if (gameState.activePowerups['freeze']) {
+            alert('❄️ FREEZE STREAK activated! Your streak is protected!');
+            delete gameState.activePowerups['freeze'];
+        } else {
+            gameState.streak = 0;
+        }
+        gameState.incorrect++;
+    }
+    
+    if (gameState.streak > gameState.maxStreak) {
+        gameState.maxStreak = gameState.streak;
+    }
+    
+    // Update stats
+    gameState.userStats.coins = gameState.coins;
+    gameState.userStats.totalAnswered++;
+    gameState.userStats.accuracy = Math.round((gameState.correct / gameState.total) * 100);
+    
+    // Update displays
+    updateStatsDisplay();
+    renderPowerupShop();
+    showActivePowerups();
+    saveGameState();
+    loadLeaderboard();
+    
+    // Show result
+    showResult(isCorrect, choice, correctAnswer, coinReward, xpReward);
+}
+
+function showResult(isCorrect, userChoice, correctAnswer, coinReward, xpReward) {
+    const modal = document.getElementById('resultModal');
+    const icon = document.getElementById('resultIcon');
+    const title = document.getElementById('resultTitle');
+    const explanation = document.getElementById('explanationText');
+    
+    icon.textContent = isCorrect ? '🎉' : '❌';
+    title.textContent = isCorrect ? 'Correct!' : 'Not Quite!';
+    title.className = `result-title ${isCorrect ? 'correct' : 'incorrect'}`;
+    
+    const currentData = gameState.historyData.history[gameState.currentIndex];
+    const futurePrice = currentData.futureprice;
+    const currentPrice = currentData.price;
+    const change = futurePrice ? ((futurePrice - currentPrice) / currentPrice * 100).toFixed(2) : 0;
+    
+    if (isCorrect) {
+        explanation.textContent = `Great job! You predicted ${userChoice} and that was the correct decision. The price ${change > 0 ? 'increased' : change < 0 ? 'decreased' : 'stayed relatively flat'} by ${Math.abs(change)}% over the next 5 days.`;
+        
+        if (gameState.streak > 1) {
+            explanation.textContent += ` You're on a ${gameState.streak}-game winning streak! 🔥`;
+        }
+    } else {
+        explanation.textContent = `The correct answer was ${correctAnswer}. The price ${change > 0 ? 'increased' : change < 0 ? 'decreased' : 'stayed relatively flat'} by ${Math.abs(change)}% over the next 5 days. Review the chart pattern and indicators to improve your next prediction.`;
+    }
+    
+    document.getElementById('rewardCoins').textContent = isCorrect ? `+${coinReward}` : '+0';
+    document.getElementById('rewardXP').textContent = isCorrect ? `+${xpReward}` : '+0';
+    
+    modal.classList.add('show');
+}
+
+function addXP(amount) {
+    gameState.xp += amount;
+    gameState.userStats.xp = gameState.xp;
+    
+    const newLevel = Math.floor(gameState.xp / 100) + 1;
+    if (newLevel > gameState.level) {
+        gameState.level = newLevel;
+        gameState.userStats.level = newLevel;
+        alert(`🎉 LEVEL UP! You've reached Level ${newLevel} - ${getLevelTitle()}!`);
+        
+        // Unlock next lesson
+        if (newLevel <= LESSONS.length) {
+            LESSONS[newLevel - 1].unlocked = true;
+            renderLearningPath();
+        }
+    }
+    
+    updateLevelDisplay();
+}
+
+// ============================================================================
+// SAVE GAME STATE
+// ============================================================================
+async function saveGameState() {
+    if (!currentUser) return;
+    
+    try {
+        await db.collection('users').doc(currentUser.uid).update({
+            'gameState.coins': gameState.coins,
+            'gameState.xp': gameState.xp,
+            'gameState.level': gameState.level,
+            'gameState.streak': gameState.streak,
+            'gameState.correct': gameState.correct,
+            'gameState.incorrect': gameState.incorrect,
+            'gameState.activePowerups': gameState.activePowerups,
+            'gameState.ownedPowerups': gameState.ownedPowerups,
+            'gamesPlayed': gameState.total,
+            'winRate': Math.round((gameState.correct / Math.max(1, gameState.total)) * 100),
+            'lastPlayed': firebase.firestore.FieldValue.serverTimestamp()
+        });
+    } catch (error) {
+        console.error('Error saving game state:', error);
+    }
+}
+
+// ============================================================================
+// EVENT LISTENERS
+// ============================================================================
+function setupEventListeners() {
+    // Action buttons
+    document.getElementById('buyBtn').addEventListener('click', () => makeDecision('BUY'));
+    document.getElementById('holdBtn').addEventListener('click', () => makeDecision('HOLD'));
+    document.getElementById('skipBtn').addEventListener('click', () => makeDecision('SKIP'));
+    
+    // Next question button
+    document.getElementById('nextQuestionBtn').addEventListener('click', () => {
+        document.getElementById('resultModal').classList.remove('show');
+        
+        if (gameState.currentQuestion >= gameState.totalQuestions) {
+            alert('Lesson complete! Moving to next lesson...');
+            gameState.currentLesson++;
+            gameState.currentQuestion = 0;
+            renderLearningPath();
+        }
+        
+        loadNewStock();
+    });
+    
+    // Change ticker button
+    document.getElementById('changeTickerBtn').addEventListener('click', () => {
+        loadNewStock();
+    });
+    
+    // Dashboard button
+    document.getElementById('dashboardBtn').addEventListener('click', () => {
+        window.location.href = 'dashboard.html';
+    });
+    
+    // Logout button
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+        try {
+            await auth.signOut();
+            window.location.href = 'index.html';
+        } catch (error) {
+            console.error('Logout error:', error);
+        }
+    });
+
+    // Encyclopedia button - NEW CODE ✅
+document.getElementById('encyclopediaBtn').addEventListener('click', () => {
+    showEncyclopedia();
+});
+    
+    // Theme toggle
+    const themeToggle = document.getElementById('themeToggle');
+    const currentTheme = localStorage.getItem('theme') || 'dark';
+    document.body.setAttribute('data-theme', currentTheme);
+    themeToggle.textContent = currentTheme === 'dark' ? '🌙 Dark Mode' : '☀️ Light Mode';
+    
+    themeToggle.addEventListener('click', () => {
+        const theme = document.body.getAttribute('data-theme');
+        const newTheme = theme === 'dark' ? 'light' : 'dark';
+        document.body.setAttribute('data-theme', newTheme);
+        localStorage.setItem('theme', newTheme);
+        themeToggle.textContent = newTheme === 'dark' ? '🌙 Dark Mode' : '☀️ Light Mode';
+    });
+    
+    // Mode selector
+document.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        const newMode = btn.getAttribute('data-mode');
+        gameState.mode = newMode;
+        
+        // ✅ Reset game for new mode
+        gameState.currentQuestion = 0;
+        gameState.correct = 0;
+        gameState.incorrect = 0;
+        gameState.total = 0;
+        gameState.streak = 0;
+        gameState.challengeMistakes = 0;
+        
+        // Get mode settings and update UI
+        const modeSettings = getModeSettings();
+        gameState.totalQuestions = modeSettings.questionsPerLesson;
+        
+        // Show mode info
+        alert(`🎮 ${modeSettings.name}\n\n${modeSettings.description}\n\n` +
+              `📊 Questions: ${modeSettings.questionsPerLesson}\n` +
+              `🪙 Coin Multiplier: ${modeSettings.coinMultiplier}x\n` +
+              `⭐ XP Multiplier: ${modeSettings.xpMultiplier}x\n` +
+              (modeSettings.hasTimer ? `⏱️ Time Limit: ${modeSettings.timeLimit}s per question\n` : '') +
+              (modeSettings.maxMistakes ? `❤️ Lives: ${modeSettings.maxMistakes}\n` : '') +
+              (modeSettings.alwaysShowHint ? '💡 Hints: Always shown\n' : 
+               modeSettings.showHints ? '💡 Hints: Available on request\n' : '💡 Hints: Disabled\n'));
+        
+        // Reload question
+        loadNewStock();
+    });
+});
+
+}
+
+// Encyclopedia Modal Function
+function showEncyclopedia() {
+    const modal = document.createElement('div');
+    modal.className = 'result-modal';
+    modal.style.display = 'flex';
+    
+    modal.innerHTML = `
+        <div class="result-content" style="max-width: 900px; max-height: 90vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="margin: 0;">📚 Trading Encyclopedia</h2>
+                <button onclick="this.closest('.result-modal').remove()" 
+                        style="background: var(--accent-red); color: white; border: none; 
+                               padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 700;">
+                    ✕ Close
+                </button>
+            </div>
+            
+            <div style="display: grid; gap: 20px;">
+                ${Object.entries(INDICATORINFO).map(([key, info]) => `
+                    <div style="background: var(--bg-input); padding: 20px; border-radius: 12px; 
+                                border: 1px solid var(--border);">
+                        <h3 style="color: var(--accent-cyan); margin-bottom: 8px;">
+                            ${info.name}
+                        </h3>
+                        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">
+                            ${info.desc}
+                        </p>
+                        <div style="background: rgba(59, 130, 246, 0.1); padding: 12px; 
+                                    border-radius: 8px; border-left: 3px solid var(--accent-blue);">
+                            <strong style="color: var(--accent-blue);">How to use:</strong><br>
+                            <span style="font-size: 13px; line-height: 1.6;">${info.tooltip}</span>
+                        </div>
+                    </div>
+                `).join('')}
+                
+                <!-- Trading Strategies -->
+                <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(6, 182, 212, 0.1)); 
+                            padding: 20px; border-radius: 12px; border: 2px solid var(--accent-green);">
+                    <h3 style="color: var(--accent-green); margin-bottom: 12px;">
+                        🎯 Trading Strategies
+                    </h3>
+                    <ul style="font-size: 13px; line-height: 2; margin: 0; padding-left: 20px;">
+                        <li><strong>Trend Following:</strong> Buy when MA10 > MA20 and price is above both</li>
+                        <li><strong>Momentum Trading:</strong> Look for RSI between 40-60 for entry signals</li>
+                        <li><strong>Volatility Breakout:</strong> When BB Width narrows, expect big move soon</li>
+                        <li><strong>Volume Confirmation:</strong> High volume + price increase = strong trend</li>
+                        <li><strong>Risk Management:</strong> Never risk more than 2% per trade</li>
+                    </ul>
+                </div>
+                
+                <!-- Common Patterns -->
+                <div style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(239, 68, 68, 0.1)); 
+                            padding: 20px; border-radius: 12px; border: 2px solid var(--accent-gold);">
+                    <h3 style="color: var(--accent-gold); margin-bottom: 12px;">
+                        📊 Common Chart Patterns
+                    </h3>
+                    <div style="display: grid; gap: 12px;">
+                        <div>
+                            <strong style="color: var(--accent-green);">✅ Bullish Signals:</strong>
+                            <ul style="font-size: 12px; margin: 8px 0; padding-left: 20px;">
+                                <li>Golden Cross: MA10 crosses above MA20</li>
+                                <li>RSI bounces off 30 (oversold)</li>
+                                <li>MACD line crosses above signal line</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <strong style="color: var(--accent-red);">⛔ Bearish Signals:</strong>
+                            <ul style="font-size: 12px; margin: 8px 0; padding-left: 20px;">
+                                <li>Death Cross: MA10 crosses below MA20</li>
+                                <li>RSI fails at 70 (overbought)</li>
+                                <li>MACD line crosses below signal line</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Close on background click
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
+}
+ 
+</script>
+</body>
+</html>
+
+
