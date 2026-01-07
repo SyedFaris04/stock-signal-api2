@@ -20,8 +20,8 @@ logreg_model = joblib.load("logreg_model.pkl")
 xgb_model = joblib.load("xgb_model.pkl")
 lgb_model = joblib.load("lgb_model.pkl")
 
-lstm_model = tf.keras.models.load_model("lstm_model.h5")
-transformer_model = tf.keras.models.load_model("transformer_model.h5")
+lstm_model = tf.keras.models.load_model("lstm_attention_model.keras")
+transformer_model = tf.keras.models.load_model("transformer_model.keras")
 
 # Load ensemble weights
 ensemble_config = joblib.load("ensemble_weights.pkl")
