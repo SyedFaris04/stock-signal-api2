@@ -111,7 +111,8 @@ def load_artifacts():
         custom_objects={"AttentionLayer": AttentionLayer},
     )
     transformer_model = tf.keras.models.load_model(
-        os.path.join(BASE_DIR, "transformer_model.keras")
+        os.path.join(BASE_DIR, "transformer_model.keras"),
+        custom_objects={"PositionalEncoding": PositionalEncoding},
     )
 
     ensemble_config = joblib.load(os.path.join(BASE_DIR, "ensemble_weights.pkl"))
