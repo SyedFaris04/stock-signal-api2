@@ -1,7 +1,12 @@
 from typing import Any, Dict
+from functools import lru_cache
+import os
+from datetime import datetime, timedelta
+
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+
 import numpy as np
 import pandas as pd
 import yfinance as yf
@@ -9,18 +14,26 @@ import joblib
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
-from datetime import datetime, timedelta
+
+# ---------------------------------------------------------
+# TensorFlow setup (safe on CPU-only machines)
+# ---------------------------------------------------------
+gpus = tf.config.experimental.list_physical_devices("GPU")
+for gpu in gpus:
+    try:
+        tf.config.experimental.set_memory_growth(gpu, True)
+    except Exception:
+        pass
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # =========================================================
-# CUSTOM LAYERS (for loading lstm_attention_model.keras)
+# CUSTOM LAYER (must match training)
 # =========================================================
 
 @keras.saving.register_keras_serializable(name="AttentionLayer")
 class AttentionLayer(layers.Layer):
-    """
-    Generic attention over time dimension.
-    This must match the class used when you trained lstm_attention_model.keras.
-    """
+    """Generic attention over time dimension."""
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -41,10 +54,9 @@ class AttentionLayer(layers.Layer):
         super().build(input_shape)
 
     def call(self, inputs):
-        # inputs: (batch, timesteps, features)
         e = tf.keras.backend.tanh(tf.keras.backend.dot(inputs, self.W) + self.b)
         e = tf.keras.backend.squeeze(e, axis=-1)          # (batch, timesteps)
-        alpha = tf.keras.backend.softmax(e)               # attention weights
+        alpha = tf.keras.backend.softmax(e)               # (batch, timesteps)
         alpha = tf.keras.backend.expand_dims(alpha, -1)   # (batch, timesteps, 1)
         context = inputs * alpha
         return tf.reduce_sum(context, axis=1)             # (batch, features)
@@ -55,32 +67,46 @@ class AttentionLayer(layers.Layer):
 
 
 # =========================================================
-# LOAD SAVED MODELS
+# LAZY LOADING OF MODELS (Render‑safe)
 # =========================================================
-print("🔄 Loading improved ensemble models...")
 
-scaler = joblib.load("scaler.pkl")
-rf_model = joblib.load("rf_model.pkl")
-logreg_model = joblib.load("logreg_model.pkl")
-xgb_model = joblib.load("xgb_model.pkl")
-lgb_model = joblib.load("lgb_model.pkl")
+@lru_cache(maxsize=1)
+def load_artifacts():
+    print("🔄 Loading ensemble models and scalers...")
 
-# Use custom_objects so Keras can find AttentionLayer
-lstm_model = tf.keras.models.load_model(
-    "lstm_attention_model.keras",
-    custom_objects={"AttentionLayer": AttentionLayer},
-)
-transformer_model = tf.keras.models.load_model("transformer_model.keras")
+    scaler = joblib.load(os.path.join(BASE_DIR, "scaler.pkl"))
+    rf_model = joblib.load(os.path.join(BASE_DIR, "rf_model.pkl"))
+    logreg_model = joblib.load(os.path.join(BASE_DIR, "logreg_model.pkl"))
+    xgb_model = joblib.load(os.path.join(BASE_DIR, "xgb_model.pkl"))
+    lgb_model = joblib.load(os.path.join(BASE_DIR, "lgb_model.pkl"))
 
-# Load ensemble weights
-ensemble_config = joblib.load("ensemble_weights.pkl")
+    lstm_model = tf.keras.models.load_model(
+        os.path.join(BASE_DIR, "lstm_attention_model.keras"),
+        custom_objects={"AttentionLayer": AttentionLayer},
+    )
+    transformer_model = tf.keras.models.load_model(
+        os.path.join(BASE_DIR, "transformer_model.keras")
+    )
 
-print(f"✅ Loaded 6 models with {len(ensemble_config.get('features', []))} features")
-print(f"📊 Ensemble weights: {ensemble_config}")
+    ensemble_config = joblib.load(os.path.join(BASE_DIR, "ensemble_weights.pkl"))
+
+    print("✅ Models loaded successfully")
+    return (
+        scaler,
+        rf_model,
+        logreg_model,
+        xgb_model,
+        lgb_model,
+        lstm_model,
+        transformer_model,
+        ensemble_config,
+    )
+
 
 # =========================================================
-# FEATURE CONFIGURATION
+# FEATURE CONFIG
 # =========================================================
+
 FEATURES = [
     "ret_1d", "ret_5d", "ret_20d",
     "vol_20d",
@@ -110,8 +136,9 @@ FEATURES = [
 
 LOOKBACK_DAYS = 60
 
+
 # =========================================================
-# TECHNICAL INDICATOR FUNCTIONS
+# TECHNICAL INDICATORS
 # =========================================================
 
 def compute_rsi(series, window=14):
@@ -170,8 +197,6 @@ def compute_williams_r(df, window=14):
 def compute_adx(df, window=14):
     high = df["High"]
     low = df["Low"]
-    close = df["price"]
-
     plus_dm = high.diff()
     minus_dm = -low.diff()
     plus_dm[plus_dm < 0] = 0
@@ -192,8 +217,7 @@ def compute_cci(df, window=20):
     tp = (df["High"] + df["Low"] + df["price"]) / 3
     sma = tp.rolling(window).mean()
     mad = tp.rolling(window).apply(lambda x: np.abs(x - x.mean()).mean())
-    cci = (tp - sma) / (0.015 * mad + 1e-9)
-    return cci
+    return (tp - sma) / (0.015 * mad + 1e-9)
 
 
 def compute_obv(df):
@@ -204,26 +228,21 @@ def compute_obv(df):
 def compute_mfi(df, window=14):
     tp = (df["High"] + df["Low"] + df["price"]) / 3
     mf = tp * df["Volume"]
-
     mf_pos = mf.where(tp.diff() > 0, 0).rolling(window).sum()
     mf_neg = mf.where(tp.diff() < 0, 0).rolling(window).sum()
-
-    mfi = 100 - (100 / (1 + mf_pos / (mf_neg + 1e-9)))
-    return mfi
+    return 100 - (100 / (1 + mf_pos / (mf_neg + 1e-9)))
 
 
 def compute_trix(series, window=15):
     ema1 = series.ewm(span=window, adjust=False).mean()
     ema2 = ema1.ewm(span=window, adjust=False).mean()
     ema3 = ema2.ewm(span=window, adjust=False).mean()
-    trix = ema3.pct_change() * 100
-    return trix
+    return ema3.pct_change() * 100
 
 
 def compute_vwap(df):
     tp = (df["High"] + df["Low"] + df["price"]) / 3
-    vwap = (tp * df["Volume"]).cumsum() / (df["Volume"].cumsum() + 1e-9)
-    return vwap
+    return (tp * df["Volume"]).cumsum() / (df["Volume"].cumsum() + 1e-9)
 
 
 def compute_keltner(df, window=20, atr_multiplier=2):
@@ -236,7 +255,7 @@ def compute_keltner(df, window=20, atr_multiplier=2):
 
 
 # =========================================================
-# DATA FETCHING AND FEATURE ENGINEERING
+# DATA FETCHING + FEATURE ENGINEERING
 # =========================================================
 
 def last_lookback_window(ticker: str):
@@ -305,18 +324,21 @@ def last_lookback_window(ticker: str):
     df["adx"] = compute_adx(df, window=14)
     df["cci"] = compute_cci(df, window=20)
 
-    df["roc_10"] = ((df["price"] - df["price"].shift(10)) / (df["price"].shift(10) + 1e-9)) * 100
-    df["roc_20"] = ((df["price"] - df["price"].shift(20)) / (df["price"].shift(20) + 1e-9)) * 100
+    df["roc_10"] = ((df["price"] - df["price"].shift(10)) /
+                    (df["price"].shift(10) + 1e-9)) * 100
+    df["roc_20"] = ((df["price"] - df["price"].shift(20)) /
+                    (df["price"].shift(20) + 1e-9)) * 100
 
     df["momentum_10"] = df["price"] - df["price"].shift(10)
 
     df["williams_r"] = compute_williams_r(df, window=14)
 
     df["obv"] = compute_obv(df)
-    df["obv_norm"] = (df["obv"] - df["obv"].rolling(20).mean()) / (df["obv"].rolling(20).std() + 1e-9)
+    df["obv_norm"] = (df["obv"] - df["obv"].rolling(20).mean()) / (
+        df["obv"].rolling(20).std() + 1e-9
+    )
 
     df["mfi"] = compute_mfi(df, window=14)
-
     df["trix"] = compute_trix(df["price"], window=15)
 
     df["dist_from_ma10"] = (df["price"] - df["ma_10"]) / (df["ma_10"] + 1e-9)
@@ -326,10 +348,14 @@ def last_lookback_window(ticker: str):
     df["ma_slope_10"] = df["ma_10"].diff(5) / (df["ma_10"] + 1e-9)
     df["ma_slope_20"] = df["ma_20"].diff(5) / (df["ma_20"] + 1e-9)
 
-    df["price_to_bb_range"] = (df["price"] - df["bb_low"]) / (df["bb_up"] - df["bb_low"] + 1e-9)
+    df["price_to_bb_range"] = (df["price"] - df["bb_low"]) / (
+        df["bb_up"] - df["bb_low"] + 1e-9
+    )
     df["volume_price_trend"] = df["Volume"] * df["ret_1d"]
 
-    distance_moved = ((df["High"] + df["Low"]) / 2) - ((df["High"].shift(1) + df["Low"].shift(1)) / 2)
+    distance_moved = ((df["High"] + df["Low"]) / 2) - (
+        (df["High"].shift(1) + df["Low"].shift(1)) / 2
+    )
     box_ratio = (df["Volume"] / 1e6) / (df["High"] - df["Low"] + 1e-9)
     df["ease_of_movement"] = distance_moved / (box_ratio + 1e-9)
 
@@ -342,7 +368,6 @@ def last_lookback_window(ticker: str):
     df["vwap_dist"] = (df["price"] - df["vwap"]) / (df["vwap"] + 1e-9)
 
     df = df.dropna()
-
     if len(df) < LOOKBACK_DAYS:
         return None
 
@@ -350,7 +375,7 @@ def last_lookback_window(ticker: str):
 
 
 # =========================================================
-# HELPER FUNCTIONS
+# HELPERS
 # =========================================================
 
 def action_from_signal(sig: int) -> str:
@@ -372,7 +397,6 @@ def build_explanation(row: pd.Series) -> str:
     ma10 = float(row.get("ma_10", np.nan))
     ma20 = float(row.get("ma_20", np.nan))
     price = float(row.get("price", np.nan))
-
     if not np.isnan(ma10) and not np.isnan(ma20):
         if ma10 > ma20 and price > ma10:
             msgs.append("Strong uptrend (price > MA10 > MA20).")
@@ -396,7 +420,6 @@ def build_explanation(row: pd.Series) -> str:
 
     if not msgs:
         return "Mixed signals. Use additional analysis."
-
     return " ".join(msgs)
 
 
@@ -414,10 +437,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-# =========================================================
-# REQUEST/RESPONSE MODELS
-# =========================================================
 
 class SignalRequest(BaseModel):
     ticker: str
@@ -439,6 +458,16 @@ class SignalResponse(BaseModel):
 
 @app.get("/")
 def root():
+    (
+        _scaler,
+        _rf,
+        _logreg,
+        _xgb,
+        _lgb,
+        _lstm,
+        _trans,
+        ensemble_config,
+    ) = load_artifacts()
     return {
         "status": "online",
         "version": "3.0-improved",
@@ -451,6 +480,17 @@ def root():
 
 @app.get("/predict")
 def get_signal_get(ticker: str = Query(..., min_length=1)) -> Dict[str, Any]:
+    (
+        scaler,
+        rf_model,
+        logreg_model,
+        xgb_model,
+        lgb_model,
+        lstm_model,
+        transformer_model,
+        ensemble_config,
+    ) = load_artifacts()
+
     window = last_lookback_window(ticker)
     if window is None:
         return {
@@ -469,10 +509,11 @@ def get_signal_get(ticker: str = Query(..., min_length=1)) -> Dict[str, Any]:
 
     proba_lstm = float(lstm_model.predict(X_seq, verbose=0).ravel()[0])
     proba_transformer = float(transformer_model.predict(X_seq, verbose=0).ravel()[0])
-    proba_rf = rf_model.predict_proba(X_tab[-1:].astype(np.float32))[:, 1][0]
-    proba_logreg = logreg_model.predict_proba(X_tab[-1:].astype(np.float32))[:, 1][0]
-    proba_xgb = xgb_model.predict_proba(X_tab[-1:].astype(np.float32))[:, 1][0]
-    proba_lgb = lgb_model.predict_proba(X_tab[-1:].astype(np.float32))[:, 1][0]
+    X_last = X_tab[-1:].astype(np.float32)
+    proba_rf = rf_model.predict_proba(X_last)[:, 1][0]
+    proba_logreg = logreg_model.predict_proba(X_last)[:, 1][0]
+    proba_xgb = xgb_model.predict_proba(X_last)[:, 1][0]
+    proba_lgb = lgb_model.predict_proba(X_last)[:, 1][0]
 
     proba_ens = (
         ensemble_config["lstm_weight"] * proba_lstm +
@@ -489,7 +530,9 @@ def get_signal_get(ticker: str = Query(..., min_length=1)) -> Dict[str, Any]:
     last_row = window.iloc[-1]
     explanation = build_explanation(last_row)
 
-    model_std = np.std([proba_lstm, proba_transformer, proba_rf, proba_logreg, proba_xgb, proba_lgb])
+    model_std = np.std(
+        [proba_lstm, proba_transformer, proba_rf, proba_logreg, proba_xgb, proba_lgb]
+    )
     if model_std < 0.1 and (proba_ens > 0.6 or proba_ens < 0.4):
         confidence = "HIGH"
     elif model_std < 0.2:
@@ -519,6 +562,17 @@ def get_signal_get(ticker: str = Query(..., min_length=1)) -> Dict[str, Any]:
 
 @app.post("/signal", response_model=SignalResponse)
 def get_signal_post(req: SignalRequest):
+    (
+        scaler,
+        rf_model,
+        logreg_model,
+        xgb_model,
+        lgb_model,
+        lstm_model,
+        transformer_model,
+        ensemble_config,
+    ) = load_artifacts()
+
     window = last_lookback_window(req.ticker)
     if window is None:
         return SignalResponse(
@@ -536,10 +590,11 @@ def get_signal_post(req: SignalRequest):
 
     proba_lstm = float(lstm_model.predict(X_seq, verbose=0).ravel()[0])
     proba_transformer = float(transformer_model.predict(X_seq, verbose=0).ravel()[0])
-    proba_rf = rf_model.predict_proba(X_tab[-1:])[:, 1][0]
-    proba_logreg = logreg_model.predict_proba(X_tab[-1:])[:, 1][0]
-    proba_xgb = xgb_model.predict_proba(X_tab[-1:])[:, 1][0]
-    proba_lgb = lgb_model.predict_proba(X_tab[-1:])[:, 1][0]
+    X_last = X_tab[-1:]
+    proba_rf = rf_model.predict_proba(X_last)[:, 1][0]
+    proba_logreg = logreg_model.predict_proba(X_last)[:, 1][0]
+    proba_xgb = xgb_model.predict_proba(X_last)[:, 1][0]
+    proba_lgb = lgb_model.predict_proba(X_last)[:, 1][0]
 
     proba_ens = (
         ensemble_config["lstm_weight"] * proba_lstm +
@@ -569,6 +624,17 @@ def get_signal_post(req: SignalRequest):
 
 @app.get("/history")
 def get_history(ticker: str = Query(..., min_length=1)) -> Dict[str, Any]:
+    (
+        scaler,
+        rf_model,
+        logreg_model,
+        xgb_model,
+        lgb_model,
+        lstm_model,
+        transformer_model,
+        ensemble_config,
+    ) = load_artifacts()
+
     window = last_lookback_window(ticker)
     if window is None:
         return {"ticker": ticker.upper(), "history": [], "error": "Insufficient data"}
@@ -603,13 +669,15 @@ def get_history(ticker: str = Query(..., min_length=1)) -> Dict[str, Any]:
     history_data = []
     for i in range(len(window)):
         fp = future_price.iloc[i]
-        history_data.append({
-            "date": str(window.index[i].date()),
-            "price": float(window["price"].iloc[i]),
-            "probability": float(proba_ens_all[i]),
-            "action": "BUY" if proba_ens_all[i] >= 0.5 else "NO_POSITION",
-            "future_price": float(fp) if not np.isnan(fp) else None,
-        })
+        history_data.append(
+            {
+                "date": str(window.index[i].date()),
+                "price": float(window["price"].iloc[i]),
+                "probability": float(proba_ens_all[i]),
+                "action": "BUY" if proba_ens_all[i] >= 0.5 else "NO_POSITION",
+                "future_price": float(fp) if not np.isnan(fp) else None,
+            }
+        )
 
     return {
         "ticker": ticker.upper(),
@@ -622,6 +690,17 @@ def get_history(ticker: str = Query(..., min_length=1)) -> Dict[str, Any]:
 
 @app.get("/metrics")
 def get_metrics(ticker: str = Query(..., min_length=1)) -> Dict[str, Any]:
+    (
+        scaler,
+        rf_model,
+        logreg_model,
+        xgb_model,
+        lgb_model,
+        lstm_model,
+        transformer_model,
+        ensemble_config,
+    ) = load_artifacts()
+
     window = last_lookback_window(ticker)
     if window is None:
         return {"ticker": ticker.upper(), "error": "Insufficient data"}
