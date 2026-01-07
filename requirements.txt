@@ -7,3 +7,5 @@ yfinance
 scikit-learn
 tensorflow-cpu==2.20.0
 joblib
+xgboost
+lightgbm
