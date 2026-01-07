@@ -12,7 +12,6 @@ import pandas as pd
 import yfinance as yf
 import joblib
 import tensorflow as tf
-from tensorflow import keras
 from tensorflow.keras import layers
 
 # ---------------------------------------------------------
@@ -31,7 +30,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # CUSTOM LAYER (must match training)
 # =========================================================
 
-@keras.saving.register_keras_serializable(name="AttentionLayer")
+@tf.keras.utils.register_keras_serializable(package="Custom", name="AttentionLayer")
 class AttentionLayer(layers.Layer):
     """Generic attention over time dimension."""
     def __init__(self, **kwargs):
